@@ -36,6 +36,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+import os
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -48,13 +49,34 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Minimum appropriate CORS configuration for local frontend development
-ALLOWED_ORIGINS = [
+# Development localhost origins preserved as defaults
+DEFAULT_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+
+def parse_allowed_origins(raw: str | None = None) -> list[str]:
+    """Parse comma-separated FRONTEND_ORIGINS, preserving localhost defaults.
+
+    Strips surrounding whitespace, excludes empty entries, and strictly rejects
+    wildcard '*' origins.
+    """
+    if raw is None:
+        raw = os.environ.get("FRONTEND_ORIGINS", "")
+    origins = list(DEFAULT_ORIGINS)
+    if raw and raw.strip():
+        for item in raw.split(","):
+            cleaned = item.strip()
+            # Explicitly disallow wildcard '*' and avoid duplicate entries
+            if cleaned and cleaned != "*" and cleaned not in origins:
+                origins.append(cleaned)
+    return origins
+
+
+ALLOWED_ORIGINS = parse_allowed_origins()
 
 app.add_middleware(
     CORSMiddleware,

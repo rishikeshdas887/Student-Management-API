@@ -263,3 +263,57 @@ def test_data_persists_across_sessions(client, tmp_path):
         count = db.execute(text("SELECT COUNT(*) FROM students")).scalar()
     assert count == 1
     engine2.dispose()
+
+
+# --------------------------------------------------------------------------- #
+# CORS & FRONTEND_ORIGINS Configuration                                       #
+# --------------------------------------------------------------------------- #
+
+
+def test_cors_parse_allowed_origins_defaults():
+    from app.main import DEFAULT_ORIGINS, parse_allowed_origins
+
+    # Unset or empty returns default localhost development origins
+    assert parse_allowed_origins("") == DEFAULT_ORIGINS
+    assert parse_allowed_origins(None) == DEFAULT_ORIGINS
+
+
+def test_cors_parse_allowed_origins_custom_and_whitespace():
+    from app.main import DEFAULT_ORIGINS, parse_allowed_origins
+
+    raw = " https://student-mgmt.example.com , http://app.internal:3000 "
+    origins = parse_allowed_origins(raw)
+    for default in DEFAULT_ORIGINS:
+        assert default in origins
+    assert "https://student-mgmt.example.com" in origins
+    assert "http://app.internal:3000" in origins
+
+
+def test_cors_parse_allowed_origins_wildcard_rejected():
+    from app.main import DEFAULT_ORIGINS, parse_allowed_origins
+
+    raw = " * , https://valid.example.com "
+    origins = parse_allowed_origins(raw)
+    assert "*" not in origins
+    assert "https://valid.example.com" in origins
+    for default in DEFAULT_ORIGINS:
+        assert default in origins
+
+
+def test_cors_headers_on_allowed_origin(client):
+    response = client.get(
+        "/health",
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+
+def test_cors_headers_disallowed_origin(client):
+    response = client.get(
+        "/health",
+        headers={"Origin": "https://malicious.example.com"},
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") is None
+

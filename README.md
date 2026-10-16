@@ -291,14 +291,14 @@ curl -X DELETE http://127.0.0.1:8000/students/STU1001
 
 ### Backend Pytest Suite
 
-Run the 20-test automated suite against an isolated throwaway SQLite test database:
+Run the automated test suite against an isolated throwaway SQLite test database:
 
 ```bash
 # In repository root
 pytest -q
 ```
 
-**Result:** `20 passed`
+**Result:** `25 passed` (including CORS origin parsing and restriction tests)
 
 ### Frontend Typecheck & Production Build
 
@@ -328,13 +328,15 @@ node frontend/scripts/verify-integration.mjs
 
 | Variable | Scope | Default Value | Description |
 |---|---|---|---|
-| `STUDENT_DATABASE_URL` | Backend | `sqlite:///<root>/students.db` | SQLAlchemy connection string. Allows pointing to alternate SQLite or database path. |
+| `STUDENT_DATABASE_URL` | Backend | `sqlite:///<root>/students.db` | SQLAlchemy connection string. Allows pointing to alternate SQLite or server database path. |
+| `FRONTEND_ORIGINS` | Backend | `http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000` | Comma-separated list of exact allowed frontend origins for CORS (e.g., `https://my-school.example.com,https://app.example.com`). Automatically strips whitespace, preserves localhost defaults, and strictly rejects wildcard `*`. |
 | `VITE_API_BASE_URL` | Frontend | `/api` | Base path for frontend API requests. Uses Vite proxy in development. |
 
 ---
 
 ## Deployment Requirements & Limitations
 
-- **State Persistence**: The backend uses SQLite. For multi-container or serverless deployments, ensure the SQLite database file resides on a persistent volume, or migrate the connection string to a client-server relational database.
+- **State Persistence**: The backend uses SQLite. For multi-container or serverless deployments, ensure the SQLite database file resides on a persistent volume, or migrate the connection string to a client-server relational database via `STUDENT_DATABASE_URL`.
 - **Single-Tenant Demo Scope**: As specified in the project assignment, authentication/RBAC is omitted to allow reviewers immediate, unrestricted access to the evaluation interface.
-- **CORS Setup**: FastAPI is configured with minimal CORS support for local development origins (`http://localhost:5173`, `http://127.0.0.1:5173`). Update `ALLOWED_ORIGINS` in `app/main.py` if deploying the frontend to a distinct production domain.
+- **Production CORS Configuration**: For production deployments, specify allowed origins using the `FRONTEND_ORIGINS` environment variable (e.g. `FRONTEND_ORIGINS="https://student-mgmt.example.com"`). Wildcard `*` origins are rejected for production security.
+
